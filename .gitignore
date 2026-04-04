@@ -51,7 +51,7 @@ CLAUDE.md
 TOOLS.md
 USER.md
 memory/
-app/
+/app/
 huntguidehub/
 outfitterhub/
 *.tar
