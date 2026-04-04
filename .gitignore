@@ -39,3 +39,30 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+-e 
+# OpenClaw internal files
+.openclaw/
+SOUL.md
+MEMORY.md
+IDENTITY.md
+AGENTS.md
+HEARTBEAT.md
+CLAUDE.md
+TOOLS.md
+USER.md
+memory/
+app/
+huntguidehub/
+outfitterhub/
+*.tar
+test.txt
+outfitterhub-website.md
+temp_outfitters.js
+
+# Environment
+.env.local
+.env
+
+# Next.js
+.next/
+node_modules/
