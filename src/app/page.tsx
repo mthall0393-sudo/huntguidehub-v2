@@ -1,3 +1,4 @@
+// HuntGuideHub Homepage - Last updated by OpenClaw
 import Link from 'next/link';
 import { supabase } from '~/lib/supabase'; // Assuming you have configured the alias
 
@@ -30,7 +31,7 @@ export default async function HomePage() {
       {outfitters.length === 0 ? (
         <p className="text-center text-gray-600">No outfitters found. Please add some to the database.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-grid-cols-3 gap-6 mt-8">
           {outfitters.map((outfitter) => (
             <Link key={outfitter.id} href={`/outfitter/${outfitter.id}`} passHref>
               <div className="rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out bg-white border border-stone/20 hover:bg-mist/30 h-full flex flex-col justify-between">
