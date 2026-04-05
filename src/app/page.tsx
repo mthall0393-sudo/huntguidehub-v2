@@ -1,160 +1,186 @@
-import Link from 'next/link';
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
+import OutfitterMap from '@/components/OutfitterMap'
 
-interface Outfitter {
-  id: string;
-  name: string;
-  tagline?: string;
-  species?: string[];
-  rating?: number;
-}
-
-interface SpeciesInfo {
-  species_name: string;
-  outfitter_count: number;
-}
-
-async function getFeaturedOutfitters(): Promise<Outfitter[]> {
-  const { data: outfitters, error } = await supabase
-    .from('outfitters')
-    .select('id, name, tagline, species, rating')
-    .limit(10) // Limit to 10 featured outfitters
-    .order('rating', { ascending: false }); // Order by rating
-
-  if (error) {
-    console.error('Error fetching featured outfitters:', error);
-    return [];
-  }
-  return outfitters ?? [];
-}
-
-async function getTopSpecies(limit: number = 8): Promise<SpeciesInfo[]> {
-  // Use the Supabase function to get species counts
-  // NOTE: This assumes you have created the 'get_species_counts' function in Supabase.
-  // If not, this will fallback to placeholder data.
-  try {
-    // Updated RPC call to pass limit correctly if the function expects it.
-    // If get_species_counts doesn't take arguments, remove the parameter.
-    const { data, error } = await supabase.rpc('get_species_counts'); // Assuming the function might not take arguments needed directly here
-
-    if (error) {
-      console.error('Error calling Supabase RPC get_species_counts:', error);
-      // Fallback to placeholder data if the function call fails
-      return getPlaceholderSpeciesCounts();
-    }
-    // Ensure data is treated as SpeciesInfo[]
-    return data as SpeciesInfo[] ?? []; 
-  } catch (rpcError) {
-    console.error('Exception calling Supabase RPC get_species_counts:', rpcError);
-    // Fallback to placeholder data on exception
-    return getPlaceholderSpeciesCounts();
-  }
-}
-
-// Placeholder data for species counts
-function getPlaceholderSpeciesCounts(): SpeciesInfo[] {
-  console.warn('Using placeholder species data.');
-  return [
-    { species_name: 'Elk', outfitter_count: 47 },
-    { species_name: 'Whitetail Deer', outfitter_count: 62 },
-    { species_name: 'Turkey', outfitter_count: 35 },
-    { species_name: 'Bear', outfitter_count: 21 },
-    { species_name: 'Javelina', outfitter_count: 15 },
-    { species_name: 'Fishing', outfitter_count: 80 },
-    { species_name: 'Dove', outfitter_count: 25 },
-    { species_name: 'Boar', outfitter_count: 30 },
-  ];
-}
-
-// Generates a lowercase, hyphen-separated slug for state names
-function slugify(text: string): string {
-  if (!text) return '';
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^\w-]+/g, '') // Remove all non-word chars except hyphen
-    .replace(/--+/g, '-') // Replace multiple hyphens with a single hyphen
-    .replace(/^-+/, '') // Trim hyphens from start
-    .replace(/-+$/, ''); // Trim hyphens from end
-}
+const SPECIES = [
+  { name: 'Elk', emoji: '🦌', slug: 'elk' },
+  { name: 'Whitetail Deer', emoji: '🦌', slug: 'whitetail-deer' },
+  { name: 'Turkey', emoji: '🦃', slug: 'turkey' },
+  { name: 'Waterfowl', emoji: '🦆', slug: 'waterfowl' },
+  { name: 'Pheasant', emoji: '🐦', slug: 'pheasant' },
+  { name: 'Hog', emoji: '🐗', slug: 'hog' },
+  { name: 'Bear', emoji: '🐻', slug: 'bear' },
+  { name: 'Antelope', emoji: '🦌', slug: 'antelope' },
+]
 
 export default async function HomePage() {
-  const outfitters = await getFeaturedOutfitters();
-  const topSpecies = await getTopSpecies(8);
+  // Get featured outfitters
+  const { data: featured } = await supabase
+    .from('outfitters')
+    .select('*')
+    .contains('tags', ['Featured'])
+    .order('rating', { ascending: false })
+    .limit(6)
+
+  // Get ALL outfitters for the map (only need location + basic info)
+  const { data: allOutfitters } = await supabase
+    .from('outfitters')
+    .select('id, name, city, state, lat, lng, species, price_starting, rating')
+
+  // Get total count
+  const { count } = await supabase
+    .from('outfitters')
+    .select('*', { count: 'exact', head: true })
+
+  // Get unique states count
+  const stateSet = new Set((allOutfitters || []).map(o => o.state))
+  const states = Array.from(stateSet).length
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      
-      {/* Added a clear, visible test message here */}
-      <p className="text-center text-amber/80 font-bold py-4">Deployment Test: Site Update Verification Active</p>
+    <div>
 
-      {/* Filters section moved to the top, near the title */}
-      <section className="mb-8">
-        <h1 className="text-4xl font-bold mb-6 text-center text-bark font-sans gradient-text">HuntGuideHub</h1>
-        
-        {/* Species Filter */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold mb-4 text-bark">Explore by Species</h2>
-          {topSpecies.length === 0 ? (
-            <p className="text-gray-600">No species data available.</p>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-4">
-              {topSpecies.map((species) => (
-                <Link key={species.species_name} href={`/species/${slugify(species.species_name)}`} passHref>
-                  <div className="rounded-lg px-6 py-3 shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out bg-white border border-stone/20 hover:bg-mist/30 max-w-xs">
-                    <h3 className="text-lg font-semibold text-bark mb-1">{species.species_name}</h3>
-                    <p className="text-amber/70 font-medium">{species.outfitter_count} Outfitters</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* State Filter (Placeholder, will be linked to /states page) */}
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-4 text-bark">Explore by State</h2>
-          <Link href="/states" passHref>
-            <button className="bg-bronze hover:bg-amber text-white font-bold py-2 px-6 rounded transition duration-300">
-              View All States
-            </button>
-          </Link>
+      {/* Hero */}
+      <section className="bg-bark px-8 py-24 text-center border-b border-white/5">
+        <p className="font-oswald text-xs tracking-widest uppercase text-amber mb-4">
+          North America's Hunting Directory
+        </p>
+        <h1 className="font-oswald text-5xl md:text-6xl font-bold uppercase text-white mb-6 leading-none">
+          Find Your Perfect<br />
+          <span className="text-bronze">Hunting Guide</span>
+        </h1>
+        <p className="text-stone text-lg mb-10 max-w-xl mx-auto">
+          The most complete directory of verified outfitters and guides across North America
+        </p>
+        {/* Stats Row */}
+        <div className="flex justify-center gap-12 flex-wrap">
+          <div>
+            <div className="font-oswald text-3xl font-bold text-amber">{count}</div>
+            <div className="font-oswald text-xs tracking-widest uppercase text-stone">Outfitters</div>
+          </div>
+          <div>
+            <div className="font-oswald text-3xl font-bold text-amber">{states}</div>
+            <div className="font-oswald text-xs tracking-widest uppercase text-stone">States</div>
+          </div>
+          <div>
+            <div className="font-oswald text-3xl font-bold text-amber">8</div>
+            <div className="font-oswald text-xs tracking-widest uppercase text-stone">Species</div>
+          </div>
         </div>
       </section>
 
-      {/* Featured Outfitters Section */}
-      <section>
-        {outfitters.length === 0 ? (
-          <p className="text-center text-gray-600">No outfitters found. Please add some to the database.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-            {outfitters.map((outfitter) => (
-              <Link key={outfitter.id} href={`/outfitter/${outfitter.id}`} passHref>
-                <div className="rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out bg-white border border-stone/20 hover:bg-mist/30 h-full flex flex-col justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold mb-2 text-bark">{outfitter.name}</h2>
-                    {outfitter.tagline && <p className="text-amber/70 mb-4">{outfitter.tagline}</p>}
-                  </div>
-                  <div className="mt-4">
-                    <button className="w-full bg-bronze hover:bg-amber text-white font-bold py-2 px-4 rounded transition duration-300">
-                      View Details
-                    </button>
-                  </div>
+      {/* Species Grid */}
+      <section className="bg-soil px-8 py-16 border-b border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <p className="section-label mb-8">Browse by Species</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {SPECIES.map(s => (
+              <Link
+                key={s.name}
+                href={`/species/${s.slug}`}
+                className="outfitter-card text-center block py-8"
+              >
+                <div className="text-4xl mb-3">{s.emoji}</div>
+                <div className="font-oswald text-sm uppercase tracking-wider text-white">
+                  {s.name}
                 </div>
               </Link>
             ))}
           </div>
-        )}
+        </div>
       </section>
-    </main>
-  );
-}
 
-// Basic styling for gradient text on h1
-const gradientTextStyle = {
-  background: 'linear-gradient(to right, #c17f3b, #e8a84c)',
-  WebkitBackgroundClip: 'text',
-  color: 'transparent'
-};
+      {/* Map Section */}
+      <section className="bg-bark border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-8 pt-16 pb-4">
+          <p className="section-label mb-2">Outfitter Locations</p>
+          <h2 className="font-oswald text-3xl font-bold uppercase text-white mb-2">
+            Hunt Anywhere in North America
+          </h2>
+          <p className="text-stone text-sm mb-6">
+            Click any pin to view outfitter details
+          </p>
+        </div>
+
+        {/* Map Legend */}
+        <div className="max-w-7xl mx-auto px-8 mb-4">
+          <div className="flex flex-wrap gap-4">
+            {[
+              { label: 'Elk', color: '#8B4513' },
+              { label: 'Deer', color: '#6B8E23' },
+              { label: 'Waterfowl', color: '#1a5276' },
+              { label: 'Turkey', color: '#8B6914' },
+              { label: 'Pheasant', color: '#7D6608' },
+              { label: 'Hog', color: '#5D4037' },
+              { label: 'Bear', color: '#4E342E' },
+              { label: 'Other', color: '#c17f3b' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2">
+                <div style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: item.color,
+                  border: '2px solid #fdfbf7'
+                }} />
+                <span className="font-oswald text-xs uppercase tracking-wider text-stone">
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* The Map */}
+        <OutfitterMap outfitters={allOutfitters || []} />
+      </section>
+
+      {/* Featured Outfitters */}
+      <section className="bg-soil px-8 py-16 border-b border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <p className="section-label mb-2">Featured Outfitters</p>
+          <h2 className="font-oswald text-3xl font-bold uppercase text-white mb-8">
+            Top Rated Guides
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {featured?.map(o => (
+              <Link key={o.id} href={`/outfitter/${o.id}`} className="outfitter-card block">
+                {/* Species badges */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {o.species?.slice(0, 2).map((s: string) => (
+                    <span key={s} className="species-badge">{s}</span>
+                  ))}
+                </div>
+                {/* Name */}
+                <h3 className="font-oswald text-xl font-bold uppercase text-white mb-1 leading-tight">
+                  {o.name}
+                </h3>
+                {/* Location */}
+                <p className="text-stone text-sm mb-3">
+                  📍 {o.city}, {o.state}
+                </p>
+                {/* Rating */}
+                {o.rating && (
+                  <p className="text-amber text-sm mb-2">
+                    {'★'.repeat(Math.floor(o.rating))} {o.rating}
+                  </p>
+                )}
+                {/* Price */}
+                {o.price_starting && (
+                  <p className="font-oswald text-lg text-amber">
+                    From ${o.price_starting.toLocaleString()}
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/states" className="btn-secondary">
+              Browse All Outfitters →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  )
+}
