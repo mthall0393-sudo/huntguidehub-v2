@@ -1,65 +1,113 @@
-import Link from 'next/link';
+import { supabase } from ‘@/lib/supabase’
+import Link from ‘next/link’
 
-interface SpeciesCount {
-  species_name: string;
-  outfitter_count: number;
+export const metadata = {
+title: ‘Browse by Species - HuntGuideHub’,
+description: ‘Find hunting outfitters and guides by species across North America.’,
 }
 
-async function getSpeciesCounts(): Promise<SpeciesCount[]> {
-  // Function to fetch species counts - assumes get_species_counts() function exists in Supabase
-  const response = await fetch('/api/rpc/get_species_counts'); // Using a placeholder API route
-  if (!response.ok) {
-    console.error('Failed to fetch species counts');
-    return [];
-  }
-  const data: SpeciesCount[] = await response.json();
-  return data;
+const SPECIES_EMOJI: Record<string, string> = {
+‘Elk’: ‘🦌’,
+‘Whitetail Deer’: ‘🦌’,
+‘Mule Deer’: ‘🦌’,
+‘Turkey’: ‘🦃’,
+‘Waterfowl’: ‘🦆’,
+‘Pheasant’: ‘🐦’,
+‘Hog’: ‘🐗’,
+‘Bear’: ‘🐻’,
+‘Antelope’: ‘🦌’,
+‘Moose’: ‘🦌’,
+‘Caribou’: ‘🦌’,
+‘Cougar’: ‘🐾’,
+‘Dove’: ‘🕊️’,
+‘Quail’: ‘🐦’,
+‘Grouse’: ‘🐦’,
+‘Sandhill Crane’: ‘🦢’,
 }
 
-// Using a placeholder for demonstration, would ideally fetch from Supabase RPC
-async function getSpeciesCountsPlaceholder(): Promise<SpeciesCount[]> {
-  // Simulate fetching data from Supabase
-  await new Promise(resolve => setTimeout(resolve, 50)); 
-  return [
-    { species_name: 'Elk', outfitter_count: 47 },
-    { species_name: 'Whitetail Deer', outfitter_count: 62 },
-    { species_name: 'Turkey', outfitter_count: 35 },
-    { species_name: 'Bear', outfitter_count: 21 },
-    { species_name: 'Javelina', outfitter_count: 15 },
-    { species_name: 'Fishing', outfitter_count: 80 },
-    { species_name: 'Dove', outfitter_count: 25 },
-    { species_name: 'Boar', outfitter_count: 30 },
-  ];
+function getEmoji(name: string): string {
+return SPECIES_EMOJI[name] || ‘🎯’
 }
 
-export default async function SpeciesListPage() {
-  const speciesCounts = await getSpeciesCountsPlaceholder(); // Replace with getSpeciesCounts() when API route is set up
-
-  return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-6 text-center text-bark font-sans gradient-text">Explore by Species</h1>
-      {speciesCounts.length === 0 ? (
-        <p className="text-center text-gray-600">No species data found. Please ensure the get_species_counts function is set up in Supabase.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-          {speciesCounts.map((species) => (
-            <Link key={species.species_name} href={`/species/${species.species_name.toLowerCase().replace(/ /g, '-')}`} passHref>
-              <div className="rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out bg-white border border-stone/20 hover:bg-mist/30 h-full flex flex-col justify-center items-center text-center">
-                <h2 className="text-2xl font-semibold text-bark mb-2">{species.species_name}</h2>
-                
-                <p className="text-amber/70 text-lg font-medium">{species.outfitter_count} Outfitters</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </main>
-  );
+function toSlug(name: string): string {
+return name.toLowerCase().replace(/ /g, ‘-’)
 }
 
-// Placeholder for gradient text style
-const gradientTextStyle = {
-  background: 'linear-gradient(to right, #c17f3b, #e8a84c)',
-  WebkitBackgroundClip: 'text',
-  color: 'transparent'
-};
+export default async function SpeciesDirectoryPage() {
+// Dynamically get all species and counts from database
+const { data: speciesData } = await supabase
+.rpc(‘get_species_counts’)
+
+const species = (speciesData || []).filter((s: any) =>
+s.species_name &&
+s.species_name.trim() !== ‘’ &&
+s.outfitter_count > 0
+)
+
+return (
+<div style={{ background: ‘#1a1410’, minHeight: ‘100vh’ }}>
+
+```
+  {/* Hero */}
+  <div style={{
+    background: '#2e2018', borderBottom: '1px solid rgba(193,127,59,0.15)',
+    padding: '4rem 2rem 3rem'
+  }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <p style={{
+        fontFamily: 'var(--font-oswald)', fontSize: '0.7rem',
+        letterSpacing: '0.3em', textTransform: 'uppercase',
+        color: '#e8a84c', marginBottom: '0.75rem'
+      }}>Browse by Species</p>
+      <h1 style={{
+        fontFamily: 'var(--font-oswald)', fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+        fontWeight: 700, textTransform: 'uppercase', color: '#fdfbf7',
+        lineHeight: 1, marginBottom: '0.75rem'
+      }}>
+        What Are You <span style={{ color: '#c17f3b' }}>Hunting?</span>
+      </h1>
+      <p style={{ color: '#a89880', fontSize: '0.9rem' }}>
+        {species.length} species available across our directory
+      </p>
+    </div>
+  </div>
+
+  {/* Species Grid */}
+  <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+      gap: '1px',
+      background: 'rgba(255,255,255,0.05)'
+    }}>
+      {species.map((s: any) => (
+        <Link
+          key={s.species_name}
+          href={`/species/${toSlug(s.species_name)}`}
+          style={{
+            display: 'block', background: '#1a1410', padding: '2rem 1.5rem',
+            textAlign: 'center', textDecoration: 'none'
+          }}
+        >
+          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+            {getEmoji(s.species_name)}
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-oswald)', fontSize: '0.9rem',
+            fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
+            color: '#fdfbf7', marginBottom: '0.4rem'
+          }}>{s.species_name}</div>
+          <div style={{
+            fontFamily: 'var(--font-oswald)', fontSize: '0.7rem',
+            letterSpacing: '0.15em', textTransform: 'uppercase', color: '#c17f3b'
+          }}>{s.outfitter_count} outfitter{s.outfitter_count !== 1 ? 's' : ''}</div>
+        </Link>
+      ))}
+    </div>
+  </div>
+
+</div>
+```
+
+)
+}
