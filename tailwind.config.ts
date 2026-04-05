@@ -18,10 +18,10 @@ module.exports = {
     },
     extend: {
       colors: {
-        bark: '#1a1410',
+        bark: '#1a1410', // Primary dark color
         soil: '#2e2018',
-        bronze: '#c17f3b',
-        amber: '#e8a84c',
+        bronze: '#c17f3b', // Accent color 1
+        amber: '#e8a84c',  // Accent color 2
         stone: '#a89880',
         mist: '#d4c5b0',
       },
@@ -31,8 +31,8 @@ module.exports = {
         sm: "var(--radius)",
       },
       fontFamily: {
-        sans: ["Oswald"],
-        serif: ["Source Serif 4"],
+        sans: ["Oswald", "sans-serif"], // Oswald for headings
+        serif: ["Source Serif 4", "serif"], // Source Serif 4 for body text
       },
     },
   },
